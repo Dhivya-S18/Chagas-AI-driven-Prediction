@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -19,7 +19,7 @@ const pageTitles = {
   '/about': 'About',
 };
 
-function AppLayout({ user, onLogout }) {
+function AppLayout({ user, onLogout, onUserUpdated }) {
   const location = useLocation();
   const currentTitle = useMemo(
     () => pageTitles[location.pathname] || 'Dashboard',
@@ -41,7 +41,10 @@ function AppLayout({ user, onLogout }) {
             <Route path="/analysis" element={<Analysis />} />
             <Route path="/history" element={<History />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/about" element={<About />} />
+            <Route
+              path="/about"
+              element={<About onUserUpdated={onUserUpdated} />}
+            />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
@@ -74,6 +77,11 @@ function App() {
     navigate('/login', { replace: true });
   };
 
+  const handleUserUpdated = useCallback((updatedUser) => {
+    localStorage.setItem('chagasUser', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  }, []);
+
   if (!token) {
     return (
       <Routes>
@@ -84,7 +92,13 @@ function App() {
     );
   }
 
-  return <AppLayout user={user} onLogout={handleLogout} />;
+  return (
+    <AppLayout
+      user={user}
+      onLogout={handleLogout}
+      onUserUpdated={handleUserUpdated}
+    />
+  );
 }
 
 export default function AppWrapper() {

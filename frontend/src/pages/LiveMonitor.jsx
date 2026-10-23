@@ -75,8 +75,6 @@ function LiveMonitor() {
 
   const serialConnected = status?.serial?.connected ?? false;
   const recentSamples = status?.recentSamples ?? [];
-  const lastWindow = status?.lastWindow;
-  const lastResult = status?.lastResult;
 
   return (
     <div className="monitor-page">
@@ -93,7 +91,11 @@ function LiveMonitor() {
 
         <div className="info-card">
           <p className="feature-label">Connection</p>
-          <h3>{serialConnected ? 'Hardware connected' : 'No hardware connected'}</h3>
+          <h3>
+            {serialConnected
+              ? 'Hardware connected'
+              : 'No hardware connected'}
+          </h3>
         </div>
       </div>
 
@@ -123,38 +125,15 @@ function LiveMonitor() {
         <p className="feature-label">Current status</p>
         <h3>Simulation only</h3>
         <p>
-          This live monitor shows a demo waveform for interface testing. No real ECG hardware is connected.
+          This live monitor shows a demo waveform for interface
+          testing. No real ECG hardware is connected.
         </p>
       </div>
 
-      <ECGChart series={recentSamples} title="DEMO ECG waveform" />
-
-      {lastWindow && (
-        <div className="info-card">
-          <p className="feature-label">Last window</p>
-          <h3>{lastWindow.sampleCount} samples</h3>
-          <p>Sampling rate: {lastWindow.samplingRate} Hz</p>
-          <p>Received: {new Date(lastWindow.receivedAt).toLocaleString()}</p>
-        </div>
-      )}
-
-      {lastResult && (
-        <div className="info-card">
-          <p className="feature-label">AI analysis</p>
-
-          {lastResult.ready ? (
-            <>
-              <h3>Analysis completed</h3>
-              <p>Feature sequence: {lastResult.sequenceLength} × {lastResult.featureCount}</p>
-            </>
-          ) : (
-            <>
-              <h3>ML Integration Pending</h3>
-              <p>{lastResult.reason}</p>
-            </>
-          )}
-        </div>
-      )}
+      <ECGChart
+        series={recentSamples}
+        title="DEMO ECG waveform"
+      />
     </div>
   );
 }

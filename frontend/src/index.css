@@ -280,6 +280,33 @@ a:focus-visible {
   gap: 20px;
 }
 
+.about-profile-form {
+  max-width: 640px;
+}
+
+.about-profile-photo-wrap {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.about-profile-photo {
+  width: 112px;
+  height: 112px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.about-profile-initials {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #dfeff9, #bad7eb);
+  color: var(--text);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
 .stats-grid,
 .monitor-summary,
 .feature-grid {

@@ -30,6 +30,11 @@ export const getCurrentUser = async () => {
   return response.data;
 };
 
+export const updateCurrentUser = async (profile) => {
+  const response = await api.put('/auth/me', profile);
+  return response.data;
+};
+
 export const getBackendHealth = async () => {
   const response = await api.get('/health');
   return response.data;

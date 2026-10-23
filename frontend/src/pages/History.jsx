@@ -5,6 +5,11 @@ import {
   getApiErrorMessage,
   getECGRecords,
 } from '../services/api';
+import {
+  formatRawModelScore,
+  getModelOutputLabel,
+  getRawModelScore,
+} from '../utils/analysisPresentation';
 
 function History() {
   const [history, setHistory] = useState({
@@ -220,53 +225,12 @@ function History() {
 
                   <tbody>
                     {history.analyses.map((analysis) => {
-                      const prediction =
-                        analysis.prediction;
-
-                      let modelOutput = 'Unavailable';
-
-                      if (
-                        prediction !== null &&
-                        prediction !== undefined
-                      ) {
-                        if (
-                          typeof prediction === 'object'
-                        ) {
-                          if (
-                            typeof prediction.prediction === 'string'
-                          ) {
-                            modelOutput = prediction.prediction;
-                          } else if (
-                            prediction.class !== null &&
-                            prediction.class !== undefined
-                          ) {
-                            modelOutput = String(
-                              prediction.class,
-                            );
-                          } else if (
-                            Number.isFinite(prediction.score)
-                          ) {
-                            modelOutput = String(
-                              prediction.score,
-                            );
-                          }
-                        } else {
-                          modelOutput = String(
-                            prediction,
-                          );
-                        }
-                      }
-
+                      const modelOutput =
+                        getModelOutputLabel(analysis);
                       const modelScore =
-                        prediction &&
-                        typeof prediction === 'object' &&
-                        Number.isFinite(
-                          prediction.score,
-                        )
-                          ? Number(
-                              prediction.score,
-                            ).toFixed(6)
-                          : 'Unavailable';
+                        formatRawModelScore(
+                          getRawModelScore(analysis),
+                        );
 
                       return (
                         <tr key={analysis._id}>
@@ -290,7 +254,10 @@ function History() {
                               'Unavailable'}
                           </td>
 
-                          <td>{modelScore}</td>
+                          <td>
+                            <div>{modelScore}</div>
+                            <div>Risk Score: Unavailable</div>
+                          </td>
 
                           <td>
                             {analysis.target ??

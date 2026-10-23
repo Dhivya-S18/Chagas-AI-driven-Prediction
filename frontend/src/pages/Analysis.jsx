@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 
 import {
@@ -8,6 +9,11 @@ import {
   getECGMonitoringStatus,
   getECGRecords,
 } from '../services/api';
+
+import {
+  getAnalysisClassLabel,
+  getLatestEligibleRecording,
+} from '../utils/analysisPresentation';
 
 function Analysis() {
   const [recordings, setRecordings] = useState([]);
@@ -21,10 +27,8 @@ function Analysis() {
   const [workingId, setWorkingId] = useState('');
 
   /*
-   * Load the monitoring status repeatedly.
-   *
-   * This is important because the 10 × 26 feature sequence
-   * is created only after 10 ECG windows are received.
+   * Refresh ECG monitoring status.
+   * The feature extraction sequence remains unchanged.
    */
   useEffect(() => {
     let isCurrent = true;
@@ -48,10 +52,7 @@ function Analysis() {
 
     loadMonitoringStatus();
 
-    const interval = setInterval(
-      loadMonitoringStatus,
-      1000,
-    );
+    const interval = setInterval(loadMonitoringStatus, 1000);
 
     return () => {
       isCurrent = false;
@@ -60,11 +61,8 @@ function Analysis() {
   }, []);
 
   /*
-   * Load recordings, analyses and ML health independently.
-   *
-   * Do not use Promise.all() here because one failed request
-   * should not prevent the other successful requests from
-   * appearing in the UI.
+   * Load recordings, saved analyses and ML status.
+   * Refresh saved data periodically so new predictions appear.
    */
   useEffect(() => {
     let isCurrent = true;
@@ -89,47 +87,39 @@ function Analysis() {
         healthResult,
       ] = results;
 
-      /*
-       * ECG recordings
-       */
-      if (
-        recordingsResult.status === 'fulfilled'
-      ) {
+      if (recordingsResult.status === 'fulfilled') {
         setRecordings(recordingsResult.value);
       } else {
         console.error(
           'Unable to load ECG recordings:',
           recordingsResult.reason,
         );
+
+        setError(
+          getApiErrorMessage(
+            recordingsResult.reason,
+            'Unable to load ECG recordings.',
+          ),
+        );
       }
 
-      /*
-       * Analysis history
-       */
-      if (
-        analysesResult.status === 'fulfilled'
-      ) {
+      if (analysesResult.status === 'fulfilled') {
         setAnalyses(analysesResult.value);
       } else {
         console.error(
-          'Unable to load analysis history:',
+          'Unable to load saved analyses:',
           analysesResult.reason,
         );
 
         setError(
           getApiErrorMessage(
             analysesResult.reason,
-            'Unable to load analysis history.',
+            'Unable to load saved analyses.',
           ),
         );
       }
 
-      /*
-       * ML service status
-       */
-      if (
-        healthResult.status === 'fulfilled'
-      ) {
+      if (healthResult.status === 'fulfilled') {
         const health = healthResult.value;
 
         setMlStatus(
@@ -151,33 +141,24 @@ function Analysis() {
 
     loadData();
 
-    /*
-     * Refresh saved analyses and recordings periodically.
-     * This allows a newly completed ML analysis to appear
-     * without manually refreshing the page.
-     */
-    const interval = setInterval(
-      async () => {
-        try {
-          const [newRecordings, newAnalyses] =
-            await Promise.all([
-              getECGRecords(),
-              getAnalyses(),
-            ]);
+    const interval = setInterval(async () => {
+      try {
+        const [newRecordings, newAnalyses] = await Promise.all([
+          getECGRecords(),
+          getAnalyses(),
+        ]);
 
-          if (isCurrent) {
-            setRecordings(newRecordings);
-            setAnalyses(newAnalyses);
-          }
-        } catch (requestError) {
-          console.error(
-            'Unable to refresh analysis data:',
-            requestError,
-          );
+        if (isCurrent) {
+          setRecordings(newRecordings);
+          setAnalyses(newAnalyses);
         }
-      },
-      3000,
-    );
+      } catch (requestError) {
+        console.error(
+          'Unable to refresh analysis data:',
+          requestError,
+        );
+      }
+    }, 3000);
 
     return () => {
       isCurrent = false;
@@ -190,12 +171,14 @@ function Analysis() {
     setActionError('');
 
     try {
-      const result =
-        await createAnalysis(recordingId);
+      const result = await createAnalysis(recordingId);
 
       setAnalyses((existing) => [
         result,
-        ...existing,
+        ...existing.filter(
+          (analysis) =>
+            String(analysis._id) !== String(result?._id),
+        ),
       ]);
     } catch (requestError) {
       setActionError(
@@ -209,14 +192,10 @@ function Analysis() {
     }
   };
 
-  const lastResult =
-    monitorStatus?.lastResult;
+  const lastResult = monitorStatus?.lastResult;
 
-  const featureNames =
-    lastResult?.featureNames || [];
-
-  const featureSequence =
-    lastResult?.sequence || [];
+  const featureNames = lastResult?.featureNames || [];
+  const featureSequence = lastResult?.sequence || [];
 
   const featureSequenceReady =
     lastResult?.ready === true &&
@@ -232,85 +211,95 @@ function Analysis() {
         ),
     );
 
+  const latestEligibleRecording =
+    getLatestEligibleRecording(recordings);
+
+  const latestRecordingAnalysis = latestEligibleRecording
+    ? analyses.find(
+        (analysis) =>
+          String(analysis.recordingId) ===
+          String(latestEligibleRecording._id),
+      )
+    : null;
+
   return (
     <div className="history-page">
+      {/* LATEST ELIGIBLE RECORDING */}
 
-      {/* =====================================================
-          AI ANALYSIS STATUS
-      ===================================================== */}
-
-      <section className="panel">
+      <section className="table-card">
         <div className="section-header">
-          <h3>AI Analysis</h3>
-
-          <span
-            className={`tag ${
-              mlStatus === 'available'
-                ? 'success'
-                : mlStatus === 'checking'
-                  ? 'warning'
-                  : 'warning'
-            }`}
-          >
-            {mlStatus === 'available'
-              ? 'ML Service Available'
-              : mlStatus === 'checking'
-                ? 'Checking ML Service'
-                : 'ML Service Unavailable'}
-          </span>
+          <h3>Latest Eligible Recording</h3>
         </div>
 
-        <p className="card-note">
-          Real ECG data from the ESP32 is used for
-          feature extraction. DEMO ECG is not used
-          for ML analysis.
-        </p>
-
-        {mlStatus === 'available' ? (
-          <p
-            className="card-note"
-            role="status"
-          >
-            ML service is available and ready
-            for analysis.
+        {error ? (
+          <p className="card-note" role="alert">
+            {error}
           </p>
         ) : null}
 
-        {mlStatus === 'unavailable' ? (
-          <p
-            className="card-note"
-            role="status"
-          >
-            ML service status could not be
-            verified from the frontend.
+        {loading ? (
+          <p className="card-note">
+            Loading ECG recordings...
           </p>
+        ) : null}
+
+        {!loading && !error && !latestEligibleRecording ? (
+          <p className="empty-state">
+            No eligible ECG recording available.
+          </p>
+        ) : null}
+
+        {!loading && latestEligibleRecording ? (
+<div className="table-wrap">
+  <table style={{ width: 'auto', tableLayout: 'auto' }}>
+    <thead>
+      <tr>
+        <th style={{ paddingRight: '16px' }}>
+          Recording Date &amp; Time
+        </th>
+        <th>
+          Classification
+        </th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr key={latestEligibleRecording._id}>
+        <td style={{ paddingRight: '16px' }}>
+          {latestEligibleRecording.recordedAt
+            ? new Date(
+                latestEligibleRecording.recordedAt,
+              ).toLocaleString()
+            : 'Timestamp unavailable'}
+        </td>
+
+        <td>
+          {latestRecordingAnalysis
+            ? getAnalysisClassLabel(latestRecordingAnalysis)
+            : 'Analysis pending'}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
         ) : null}
 
         {actionError ? (
-          <p
-            className="card-note"
-            role="alert"
-          >
+          <p className="card-note" role="alert">
             {actionError}
           </p>
         ) : null}
       </section>
 
-      {/* =====================================================
-          CURRENT ECG FEATURE EXTRACTION
-      ===================================================== */}
+      {/* CURRENT ECG FEATURE EXTRACTION */}
 
       <section className="panel">
         <div className="section-header">
-          <h3>
-            Current ECG Feature Extraction
-          </h3>
+          <h3>Current ECG Feature Extraction</h3>
 
           <span
             className={`tag ${
-              featureSequenceReady
-                ? 'success'
-                : 'warning'
+              featureSequenceReady ? 'success' : 'warning'
             }`}
           >
             {featureSequenceReady
@@ -319,29 +308,24 @@ function Analysis() {
           </span>
         </div>
 
-        {!monitorStatus?.monitoring &&
-        !featureSequenceReady ? (
+        {!monitorStatus?.monitoring && !featureSequenceReady ? (
           <p className="card-note">
-            Start ECG monitoring from the Live
-            Monitor page.
+            Start ECG monitoring from the Live Monitor page.
           </p>
         ) : null}
 
-        {monitorStatus?.monitoring &&
-        !featureSequenceReady ? (
+        {monitorStatus?.monitoring && !featureSequenceReady ? (
           <p className="card-note">
-            ECG monitoring is running. Waiting
-            for 10 complete ECG windows before
-            ML analysis.
+            ECG monitoring is running. Waiting for 10 complete
+            ECG windows before ML analysis.
           </p>
         ) : null}
 
         {featureSequenceReady ? (
           <>
             <p className="card-note">
-              The real ESP32 ECG signal has
-              produced a valid 10 × 26 feature
-              sequence.
+              The real ESP32 ECG signal has produced a valid
+              10 × 26 feature sequence.
             </p>
 
             <div className="table-wrap">
@@ -350,329 +334,30 @@ function Analysis() {
                   <tr>
                     <th>Window</th>
 
-                    {featureNames.map(
-                      (name) => (
-                        <th key={name}>
-                          {name}
-                        </th>
-                      ),
-                    )}
+                    {featureNames.map((name) => (
+                      <th key={name}>{name}</th>
+                    ))}
                   </tr>
                 </thead>
 
                 <tbody>
-                  {featureSequence.map(
-                    (row, rowIndex) => (
-                      <tr key={rowIndex}>
-                        <td>
-                          Window{' '}
-                          {rowIndex + 1}
-                        </td>
+                  {featureSequence.map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      <td>Window {rowIndex + 1}</td>
 
-                        {row.map(
-                          (
-                            value,
-                            columnIndex,
-                          ) => (
-                            <td
-                              key={
-                                columnIndex
-                              }
-                            >
-                              {Number.isFinite(
-                                value,
-                              )
-                                ? Number(
-                                    value,
-                                  ).toFixed(
-                                    4,
-                                  )
-                                : 'Invalid'}
-                            </td>
-                          ),
-                        )}
-                      </tr>
-                    ),
-                  )}
+                      {row.map((value, columnIndex) => (
+                        <td key={columnIndex}>
+                          {Number.isFinite(value)
+                            ? Number(value).toFixed(4)
+                            : 'Invalid'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </>
-        ) : null}
-      </section>
-
-      {/* =====================================================
-          ELIGIBLE RECORDINGS
-      ===================================================== */}
-
-      <section className="table-card">
-        <div className="section-header">
-          <h3>Eligible Recordings</h3>
-        </div>
-
-        {loading ? (
-          <p className="card-note">
-            Loading ECG recordings...
-          </p>
-        ) : null}
-
-        {!loading &&
-        !error &&
-        recordings.length === 0 ? (
-          <p className="empty-state">
-            No ECG recordings available.
-          </p>
-        ) : null}
-
-        {!loading &&
-        !error &&
-        recordings.length > 0 ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Recorded</th>
-                  <th>Source</th>
-                  <th>
-                    Feature Sequence
-                  </th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {recordings.map(
-                  (recording) => {
-                    const demo =
-                      recording.source ===
-                      'DEMO';
-
-                    const hasFeatures =
-                      recording.mlFeatureSequenceAvailable ===
-                      true;
-
-                    const canAnalyze =
-                      !demo &&
-                      hasFeatures &&
-                      mlStatus ===
-                        'available';
-
-                    return (
-                      <tr
-                        key={
-                          recording._id
-                        }
-                      >
-                        <td>
-                          {new Date(
-                            recording.recordedAt,
-                          ).toLocaleString()}
-                        </td>
-
-                        <td>
-                          {recording.source ||
-                            'Unavailable'}
-                        </td>
-
-                        <td>
-                          {demo
-                            ? 'DEMO ECG cannot be analyzed'
-                            : hasFeatures
-                              ? '10 × 26 sequence available'
-                              : 'Valid ECG feature sequence required'}
-                        </td>
-
-                        <td>
-                          <button
-                            type="button"
-                            className="link-button"
-                            onClick={() =>
-                              handleAnalyze(
-                                recording._id,
-                              )
-                            }
-                            disabled={
-                              !canAnalyze ||
-                              workingId ===
-                                recording._id
-                            }
-                          >
-                            {workingId ===
-                            recording._id
-                              ? 'Analyzing...'
-                              : canAnalyze
-                                ? 'Analyze'
-                                : 'Unavailable'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  },
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </section>
-
-      {/* =====================================================
-          ANALYSIS HISTORY
-      ===================================================== */}
-
-      <section className="table-card">
-        <div className="section-header">
-          <h3>Analysis History</h3>
-        </div>
-
-        {error ? (
-          <p
-            className="card-note"
-            role="alert"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        {!loading &&
-        !error &&
-        analyses.length === 0 ? (
-          <p className="empty-state">
-            No AI analysis available yet.
-          </p>
-        ) : null}
-
-        {!loading &&
-        !error &&
-        analyses.length > 0 ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date/Time</th>
-                  <th>Status</th>
-                  <th>Model Output</th>
-                  <th>Decision Reason</th>
-                  <th>
-                    Model Score
-                  </th>
-                  <th>Target</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {analyses.map(
-                  (analysis) => {
-                    const prediction =
-                      analysis.prediction;
-
-                    let modelOutput =
-                      'Unavailable';
-
-                    if (
-                      prediction !==
-                        null &&
-                      prediction !==
-                        undefined
-                    ) {
-                      if (
-                        typeof prediction ===
-                        'object'
-                      ) {
-                        if (
-                          typeof prediction.prediction ===
-                          'string'
-                        ) {
-                          modelOutput =
-                            prediction.prediction;
-                        } else if (
-                          prediction.class !==
-                            null &&
-                          prediction.class !==
-                            undefined
-                        ) {
-                          modelOutput =
-                            String(
-                              prediction.class,
-                            );
-                        } else if (
-                          Number.isFinite(
-                            prediction.score,
-                          )
-                        ) {
-                          modelOutput =
-                            String(
-                              prediction.score,
-                            );
-                        }
-                      } else {
-                        modelOutput =
-                          String(
-                            prediction,
-                          );
-                      }
-                    }
-
-                    const modelScore =
-                      prediction &&
-                      typeof prediction ===
-                        'object' &&
-                      Number.isFinite(
-                        prediction.score,
-                      )
-                        ? Number(
-                            prediction.score,
-                          ).toFixed(6)
-                        : 'Unavailable';
-
-                    return (
-                      <tr
-                        key={
-                          analysis._id
-                        }
-                      >
-                        <td>
-                          {new Date(
-                            analysis.analyzedAt,
-                          ).toLocaleString()}
-                        </td>
-
-                        <td>
-                          {analysis.status ||
-                            'Unavailable'}
-                        </td>
-
-                        <td>
-                          {modelOutput}
-                        </td>
-
-                        <td>
-                          {analysis.predictionReason ||
-                            'Unavailable'}
-                        </td>
-
-                        <td>
-                          {modelScore}
-                        </td>
-
-                        <td>
-                          {analysis.target ??
-                            'Unavailable'}
-                        </td>
-                      </tr>
-                    );
-                  },
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-
-        {!loading &&
-        analyses.length > 0 ? (
-          <p className="card-note">
-            Model-returned values are shown
-            without medical interpretation.
-          </p>
         ) : null}
       </section>
     </div>
