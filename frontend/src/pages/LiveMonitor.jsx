@@ -14,7 +14,7 @@ function LiveMonitor() {
       const response = await api.get('/ecg/monitor/status');
 
       setStatus(response.data);
-      setMonitoring(response.data.monitoring);
+      setMonitoring(Boolean(response.data?.monitoring));
       setError('');
     } catch (requestError) {
       setError(
@@ -25,6 +25,7 @@ function LiveMonitor() {
   };
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
     fetchStatus();
 
     const interval = setInterval(() => {
@@ -42,7 +43,7 @@ function LiveMonitor() {
       const response = await api.post('/ecg/monitor/start');
 
       setStatus(response.data);
-      setMonitoring(response.data.monitoring);
+      setMonitoring(Boolean(response.data?.monitoring));
     } catch (requestError) {
       setError(
         requestError?.response?.data?.message ||
@@ -72,13 +73,8 @@ function LiveMonitor() {
     }
   };
 
-  const sampleCount = status?.sampleCount ?? 0;
-  const samplingRate = status?.samplingRate ?? 250;
-  const windowSeconds = status?.windowSeconds ?? 10;
   const serialConnected = status?.serial?.connected ?? false;
-
   const recentSamples = status?.recentSamples ?? [];
-
   const lastWindow = status?.lastWindow;
   const lastResult = status?.lastResult;
 
@@ -86,45 +82,18 @@ function LiveMonitor() {
     <div className="monitor-page">
       <div className="monitor-summary">
         <div className="info-card">
-          <p className="feature-label">Monitoring status</p>
+          <p className="feature-label">Monitoring</p>
           <h3>{monitoring ? 'Running' : 'Stopped'}</h3>
         </div>
 
         <div className="info-card">
-          <p className="feature-label">Data source</p>
-          <h3>ESP32 ECG</h3>
+          <p className="feature-label">Signal</p>
+          <h3>DEMO ECG</h3>
         </div>
 
         <div className="info-card">
-          <p className="feature-label">ESP32 status</p>
-          <h3>
-            {serialConnected ? 'Connected' : 'Not connected'}
-          </h3>
-        </div>
-
-        <div className="info-card">
-          <p className="feature-label">Sampling rate</p>
-          <h3>{samplingRate} Hz</h3>
-        </div>
-
-        <div className="info-card">
-          <p className="feature-label">Samples received</p>
-          <h3>{sampleCount}</h3>
-        </div>
-
-        <div className="info-card">
-          <p className="feature-label">Display samples</p>
-          <h3>{recentSamples.length}</h3>
-        </div>
-
-        <div className="info-card">
-          <p className="feature-label">Heart rate</p>
-          <h3>Unavailable</h3>
-        </div>
-
-        <div className="info-card">
-          <p className="feature-label">Signal quality</p>
-          <h3>Pending</h3>
+          <p className="feature-label">Connection</p>
+          <h3>{serialConnected ? 'Hardware connected' : 'No hardware connected'}</h3>
         </div>
       </div>
 
@@ -135,7 +104,7 @@ function LiveMonitor() {
           onClick={handleStart}
           disabled={loading || monitoring}
         >
-          {loading ? 'Please wait...' : 'Start Monitoring'}
+          {loading ? 'Please wait...' : 'Start demo ECG'}
         </button>
 
         <button
@@ -144,103 +113,44 @@ function LiveMonitor() {
           onClick={handleStop}
           disabled={loading || !monitoring}
         >
-          Stop Monitoring
+          Stop demo ECG
         </button>
-
-        <div className="duration-box">
-          <span className="feature-label">
-            Monitoring
-          </span>
-
-          <strong>
-            {monitoring
-              ? `${sampleCount} samples`
-              : 'Stopped'}
-          </strong>
-        </div>
       </div>
 
-      {error && (
-        <div className="auth-error">
-          {error}
-        </div>
-      )}
+      {error && <div className="auth-error">{error}</div>}
 
       <div className="info-card">
-        <p className="feature-label">
-          Live ECG signal
-        </p>
-
-        <h3>
-          {serialConnected
-            ? 'ESP32 ECG signal connected'
-            : 'Waiting for ESP32 connection'}
-        </h3>
-
+        <p className="feature-label">Current status</p>
+        <h3>Simulation only</h3>
         <p>
-          Samples received from the ESP32 are displayed below.
+          This live monitor shows a demo waveform for interface testing. No real ECG hardware is connected.
         </p>
       </div>
 
-      <ECGChart
-        series={recentSamples}
-        title="Live ESP32 ECG"
-      />
+      <ECGChart series={recentSamples} title="DEMO ECG waveform" />
 
       {lastWindow && (
         <div className="info-card">
-          <p className="feature-label">
-            Last ECG window
-          </p>
-
-          <h3>
-            {lastWindow.sampleCount} samples
-          </h3>
-
-          <p>
-            Sampling rate: {lastWindow.samplingRate} Hz
-          </p>
-
-          <p>
-            Received:{' '}
-            {new Date(
-              lastWindow.receivedAt
-            ).toLocaleString()}
-          </p>
+          <p className="feature-label">Last window</p>
+          <h3>{lastWindow.sampleCount} samples</h3>
+          <p>Sampling rate: {lastWindow.samplingRate} Hz</p>
+          <p>Received: {new Date(lastWindow.receivedAt).toLocaleString()}</p>
         </div>
       )}
 
       {lastResult && (
         <div className="info-card">
-          <p className="feature-label">
-            AI analysis
-          </p>
+          <p className="feature-label">AI analysis</p>
 
           {lastResult.ready ? (
             <>
               <h3>Analysis completed</h3>
-
-              <p>
-                Feature sequence:{' '}
-                {lastResult.sequenceLength} ×{' '}
-                {lastResult.featureCount}
-              </p>
-
-              <p>
-                Recording ID: {lastResult.recordingId}
-              </p>
-
-              <p>
-                Analysis ID: {lastResult.analysisId}
-              </p>
+              <p>Feature sequence: {lastResult.sequenceLength} × {lastResult.featureCount}</p>
             </>
           ) : (
             <>
-              <h3>Analysis pending</h3>
-
-              <p>
-                {lastResult.reason}
-              </p>
+              <h3>ML Integration Pending</h3>
+              <p>{lastResult.reason}</p>
             </>
           )}
         </div>

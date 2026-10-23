@@ -63,7 +63,7 @@ function App() {
     localStorage.setItem('chagasUser', JSON.stringify(authData.user));
     setToken(authData.token);
     setUser(authData.user);
-    navigate('/dashboard');
+    navigate('/dashboard', { replace: true });
   };
 
   const handleLogout = () => {
@@ -71,7 +71,7 @@ function App() {
     localStorage.removeItem('chagasUser');
     setToken('');
     setUser(null);
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   if (!token) {

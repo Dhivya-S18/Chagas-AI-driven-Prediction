@@ -1,4 +1,4 @@
-function PredictionCard({ title = 'AI Analysis', status = 'ECG feature extraction pending', extra = 'No prediction generated.' }) {
+function PredictionCard({ title = 'AI analysis', status = 'ML Integration Pending', extra = 'No verified prediction yet.' }) {
   return (
     <div className="info-card">
       <div className="section-header">

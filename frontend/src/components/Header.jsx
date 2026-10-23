@@ -1,5 +1,3 @@
-import ConnectionStatus from './ConnectionStatus';
-
 function Header({ title, user }) {
   const initials = user?.name
     ?.split(/\s+/)
@@ -11,12 +9,11 @@ function Header({ title, user }) {
   return (
     <header className="topbar">
       <div>
-        <p className="eyebrow-text">Monitoring Overview</p>
+        <p className="eyebrow-text">Monitoring overview</p>
         <h1 className="page-title">{title}</h1>
       </div>
 
       <div className="topbar-actions">
-        <ConnectionStatus status="DEMO ECG" />
         <div className="profile-card">
           <div className="avatar">{initials}</div>
           <div>

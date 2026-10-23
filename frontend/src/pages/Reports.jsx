@@ -71,21 +71,20 @@ function Reports() {
   return (
     <div className="reports-page">
       <section className="panel">
-        <div className="section-header"><h3>Generate New Report</h3></div>
+        <div className="section-header"><h3>Generate new report</h3></div>
         <form className="auth-form" onSubmit={handleGenerateReport}>
           <label>Start date<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required /></label>
           <label>End date<input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} min={startDate} required /></label>
           <button type="submit" className="primary-button" disabled={generating}>
-            {generating ? 'Generating...' : 'Generate PDF Report'}
+            {generating ? 'Generating...' : 'Generate PDF report'}
           </button>
         </form>
         {notice ? <p className="card-note" role="status">{notice}</p> : null}
         {error ? <p className="card-note" role="alert">{error}</p> : null}
-        <p className="card-note">Reports can be generated without an alert. AI analysis is reported as unavailable while ML integration is pending.</p>
       </section>
 
       <section className="table-card">
-        <div className="section-header"><h3>Previous Reports</h3></div>
+        <div className="section-header"><h3>Previous reports</h3></div>
         {loading ? <p className="card-note">Loading reports...</p> : null}
         {!loading && !error && reports.length === 0 ? <p className="empty-state">No reports generated yet.</p> : null}
         {!loading && reports.length > 0 ? (

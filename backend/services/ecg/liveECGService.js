@@ -282,6 +282,31 @@ export function startLiveECG(user) {
         );
     }
 
+    if (
+        !Number.isInteger(user.age) ||
+        user.age < 0 ||
+        user.age > 120
+    ) {
+        const error = new Error(
+            'A saved age between 0 and 120 is required before live ECG inference can start.',
+        );
+        error.statusCode = 422;
+        throw error;
+    }
+
+    const gender =
+        typeof user.gender === 'string'
+            ? user.gender.trim().toLowerCase()
+            : '';
+
+    if (gender !== 'male' && gender !== 'female') {
+        const error = new Error(
+            'A saved Male or Female gender value is required for the model input before live ECG inference can start.',
+        );
+        error.statusCode = 422;
+        throw error;
+    }
+
     if (signalBuffer) {
         console.log(
             'ECG monitoring is already running.',
@@ -300,10 +325,7 @@ export function startLiveECG(user) {
     currentUser = {
         userId: user.userId,
         age: user.age,
-        isMale:
-    String(user.gender).toLowerCase() === 'male'
-        ? 1
-        : 0,
+        isMale: gender === 'male' ? 1 : 0,
     };
 
     console.log(

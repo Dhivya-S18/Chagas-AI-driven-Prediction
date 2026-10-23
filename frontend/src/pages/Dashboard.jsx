@@ -3,18 +3,18 @@ import { Link } from 'react-router-dom';
 import HistoryTable from '../components/HistoryTable';
 import PredictionCard from '../components/PredictionCard';
 import StatCard from '../components/StatCard';
-import { getAlerts, getAnalyses, getApiErrorMessage, getBackendHealth, getECGRecords } from '../services/api';
+import { getAlerts, getAnalyses, getApiErrorMessage, getECGRecords } from '../services/api';
 
 function Dashboard() {
-  const [monitoring, setMonitoring] = useState({ recordings: [], analyses: [], alerts: [], health: null });
+  const [monitoring, setMonitoring] = useState({ recordings: [], analyses: [], alerts: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let isCurrent = true;
-    Promise.all([getECGRecords(), getAnalyses(), getAlerts(), getBackendHealth()])
-      .then(([recordings, analyses, alerts, health]) => {
-        if (isCurrent) setMonitoring({ recordings, analyses, alerts, health });
+    Promise.all([getECGRecords(), getAnalyses(), getAlerts()])
+      .then(([recordings, analyses, alerts]) => {
+        if (isCurrent) setMonitoring({ recordings, analyses, alerts });
       })
       .catch((requestError) => {
         if (isCurrent) setError(getApiErrorMessage(requestError, 'Unable to load monitoring data.'));
@@ -34,48 +34,38 @@ function Dashboard() {
   const heartRate = Number.isFinite(latest?.heartRate) && latest.heartRate > 0
     ? `${latest.heartRate} BPM`
     : 'Unavailable';
-  const mlStatus = monitoring.health?.ml?.status === 'available'
-    ? 'Available'
-    : monitoring.health?.ml?.status === 'not_ready'
-      ? 'Not ready'
-      : monitoring.health?.ml?.status === 'timeout'
-        ? 'Timed out'
-        : loading ? 'Checking...' : 'Unavailable';
-  const analysisSummary = latestAnalysis
-    ? latestAnalysis.prediction === null || latestAnalysis.prediction === undefined
-      ? `${latestAnalysis.predictionReason || 'No class decision configured.'} Model-returned probability: ${latestAnalysis.probability ?? 'Unavailable'}`
-      : `Class value returned: ${latestAnalysis.prediction}`
-    : 'No ML results available.';
-  const backendStatus = monitoring.health?.backend || (loading ? 'Checking...' : 'Unavailable');
-  const databaseStatus = monitoring.health?.mongodb || (loading ? 'Checking...' : 'Unavailable');
+  const analysisStatus = latestAnalysis
+    ? latestAnalysis.status || 'ML Integration Pending'
+    : 'ML Integration Pending';
+  const alertText = latestAlert ? latestAlert.message : 'No recent alerts';
 
   return (
     <div className="dashboard-page">
       <div className="stats-grid">
-        <StatCard label="Monitoring Status" value="DEMO only" hint="Waveform simulation is available in Live Monitor" accent="teal" />
-        <StatCard label="Backend" value={backendStatus} hint="Express API" accent="blue" />
-        <StatCard label="MongoDB" value={databaseStatus} hint="Database connection" accent="green" />
-        <StatCard label="Latest ECG" value={latest?.source || 'No stored recording'} hint={latest ? new Date(latest.recordedAt).toLocaleString() : 'Monitor demo is not saved'} accent="blue" />
-        <StatCard label="Heart Rate" value={heartRate} hint={latest?.source === 'DEMO' ? 'DEMO record' : 'Backend recording'} accent="green" />
-        <StatCard label="Signal Quality" value={latest?.signalQuality || 'Unavailable'} hint={latest?.source === 'DEMO' ? 'DEMO record' : 'Backend recording'} accent="teal" />
-        <StatCard label="ML Service" value={mlStatus} hint="Status verified through backend" accent="amber" />
+        <StatCard label="Monitoring" value="DEMO ECG" hint={latest ? 'Waveform is available in Live Monitor' : 'No recorded signal yet'} accent="teal" />
+        <StatCard label="Latest ECG" value={latest?.source || 'No recording'} hint={latest ? new Date(latest.recordedAt).toLocaleString() : 'No recorded ECG yet'} accent="blue" />
+        <StatCard label="Heart rate" value={heartRate} hint={latest?.source ? `Source: ${latest.source}` : 'Available when a recording exists'} accent="green" />
+        <StatCard label="AI status" value={analysisStatus} hint="Verified from the backend when available" accent="amber" />
       </div>
 
       <div className="page-grid two-column">
         <PredictionCard
-          title="Latest AI Analysis"
-          status={latestAnalysis?.status || 'ECG feature extraction pending'}
-          extra={latestAnalysis ? analysisSummary : 'No AI analysis available. Valid ECG feature sequence required.'}
+          title="Latest AI analysis"
+          status={analysisStatus}
+          extra={latestAnalysis
+            ? `Status: ${latestAnalysis.status || 'ML Integration Pending'}`
+            : 'No verified ML result is available yet.'}
         />
         <div className="panel">
-          <div className="section-header"><h3>Latest Alert</h3></div>
-          <p className="card-note">{latestAlert ? latestAlert.message : 'No AI alerts available.'}</p>
+          <div className="section-header"><h3>Recent alert</h3></div>
+          <p className="card-note">{alertText}</p>
         </div>
       </div>
 
       <div className="actions-panel">
-        <Link className="primary-button" to="/monitor">Open Live Monitor</Link>
-        <Link className="secondary-button" to="/reports">Generate Report</Link>
+        <Link className="primary-button" to="/monitor">Open monitor</Link>
+        <Link className="secondary-button" to="/history">View history</Link>
+        <Link className="secondary-button" to="/reports">Generate report</Link>
       </div>
 
       {loading ? <p className="card-note">Loading monitoring data...</p> : null}

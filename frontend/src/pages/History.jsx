@@ -126,10 +126,7 @@ function History() {
         <>
           <section className="table-card">
             <div className="section-header">
-              <h3>Recent Measurements</h3>
-              <span className="tag muted">
-                Backend records
-              </span>
+              <h3>Recent measurements</h3>
             </div>
 
             {history.recordings.length === 0 ? (
@@ -200,11 +197,7 @@ function History() {
 
           <section className="table-card">
             <div className="section-header">
-              <h3>AI Analysis</h3>
-
-              <span className="tag muted">
-                ML analysis
-              </span>
+              <h3>AI analysis</h3>
             </div>
 
             {history.analyses.length === 0 ? (
@@ -240,6 +233,10 @@ function History() {
                           typeof prediction === 'object'
                         ) {
                           if (
+                            typeof prediction.prediction === 'string'
+                          ) {
+                            modelOutput = prediction.prediction;
+                          } else if (
                             prediction.class !== null &&
                             prediction.class !== undefined
                           ) {
@@ -247,11 +244,11 @@ function History() {
                               prediction.class,
                             );
                           } else if (
-                            prediction.score !== null &&
-                            prediction.score !== undefined
+                            Number.isFinite(prediction.score)
                           ) {
-                            modelOutput =
-                              'Model score returned';
+                            modelOutput = String(
+                              prediction.score,
+                            );
                           }
                         } else {
                           modelOutput = String(

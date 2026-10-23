@@ -51,7 +51,7 @@ function Login({ onAuthSuccess }) {
         </div>
 
         <h2>Personal ECG Monitoring</h2>
-        <p className="login-subtitle">DEMO ECG is available in Live Monitor. ESP32 is not connected.</p>
+        <p className="login-subtitle">DEMO ECG is available in Live Monitor. No hardware ECG sensor is currently connected.</p>
 
         <div className="auth-toggle">
           <button

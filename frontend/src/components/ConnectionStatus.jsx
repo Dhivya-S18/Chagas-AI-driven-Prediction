@@ -1,4 +1,4 @@
-function ConnectionStatus({ status = 'Demo Mode' }) {
+function ConnectionStatus({ status = 'DEMO ECG' }) {
   return (
     <div className="connection-status">
       <span className="status-dot online" aria-hidden="true" />

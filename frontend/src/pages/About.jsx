@@ -2,31 +2,28 @@ function About() {
   return (
     <div className="about-page panel">
       <div className="section-header">
-        <h3>Project title</h3>
-      </div>
-      <p className="card-note">Personal ECG monitoring with a DEMO signal, user-owned history, and downloadable reports.</p>
-
-      <div className="about-section">
-        <h4>Project objective</h4>
-        <p className="card-note">The current monitor demonstrates a simulated ECG waveform. ESP32 input and ML-based analysis are future integrations.</p>
+        <h3>About</h3>
       </div>
 
+      <p className="card-note">
+        This app helps you review monitoring activity, recent ECG recordings, AI analysis status, and downloadable reports for your account.
+      </p>
+
       <div className="about-section">
-        <h4>System workflow</h4>
-        <ol className="workflow-list">
-          <li>User account and JWT authentication</li>
-          <li>DEMO ECG monitor</li>
-          <li>Backend API and MongoDB</li>
-          <li>User-owned monitoring history</li>
-          <li>PDF reports</li>
-          <li>Future signal processing and ML integration</li>
-          <li>ESP32 not connected</li>
-        </ol>
+        <h4>Current experience</h4>
+        <p className="card-note">
+          The monitor currently uses a simulated DEMO ECG signal. Real hardware and verified ML output are not available yet.
+        </p>
       </div>
 
       <div className="about-section">
-        <h4>Core components</h4>
-        <p className="card-note">Only the waveform demo runs today. No AI predictions, alerts, or hardware connections are generated.</p>
+        <h4>What you can do</h4>
+        <ul className="workflow-list">
+          <li>Review your monitoring history</li>
+          <li>Check current AI analysis status</li>
+          <li>Generate a PDF report for a date range</li>
+          <li>Use the demo monitor while the live signal integration remains pending</li>
+        </ul>
       </div>
     </div>
   );
